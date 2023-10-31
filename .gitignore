@@ -1,2 +1,4 @@
-data/
-cifar10/
+data
+cifar10
+mnist
+*.pt
