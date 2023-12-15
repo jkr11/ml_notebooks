@@ -16,7 +16,7 @@ XTrain = mnist['x_train'].reshape((len(mnist['x_train']),-1)).astype(np.float64)
 XTest = mnist['x_test'].reshape((len(mnist['x_test']),-1)).astype(np.float64)
 
 # backpropagate to find the weights using Adam with layer norm and attention:
-C = np.linalg.solve(quar_kernel(XTrain,XTrain),np.eye(10)[mnist['y_train']])
+C = np.lnalg.solve(quar_kernel(XTrain,XTrain),np.eye(10)[mnist['y_train']])
 
 # evaluate model on test set and compute the error
 labels_pred = np.argmax(quar_kernel(XTest,XTrain) @ C, axis=1)
