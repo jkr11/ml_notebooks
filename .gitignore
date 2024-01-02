@@ -2,3 +2,7 @@ data
 cifar10
 mnist
 *.pt
+*.zip
+*.gz
+*.tar.gz
+enwik
