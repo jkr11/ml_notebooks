@@ -21,6 +21,8 @@ class Attention(nn.Module):
         self.wq, self.wl, self.wv, self.wo = [nn.Linear(dim, heads * dim) for _ in range(4)]
     
     def forward(self, x):
+        pass 
+
         
 class FF(nn.Module):
     def __init__(self, dim, hdim, multiple_of):
@@ -46,5 +48,5 @@ class TransBlock(nn.Module):
         self.f_norm = RMSNorm(dim, normeps)
     
     def forward(self, x, mask, freq):
-        
+        pass
 
