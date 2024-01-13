@@ -1,40 +1,26 @@
 import torch
 import gym
-from gym.spaces import Discrete, Box 
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
 import matplotlib.pyplot as plt
 
-
-
 def Agent(obs_dim, inner, act_dim):
-    net = nn.Sequential(
+    return nn.Sequential(
         nn.Linear(obs_dim,inner),
         nn.Tanh(),
         nn.Linear(inner, inner),
         nn.Tanh(),
         nn.Linear(inner, act_dim)
     )
-    return net
-    
-def mlp(sizes, activation=nn.Tanh, output_activation=nn.Identity):
-    # Build a feedforward neural network.
-    layers = []
-    for j in range(len(sizes)-1):
-        act = activation if j < len(sizes)-2 else output_activation
-        layers += [nn.Linear(sizes[j], sizes[j+1]), act()]
-    return nn.Sequential(*layers)
-    
+
 def train(render=False, hidden_shape = 32, lr=1e-2, epochs=64, bs=5000):
-    #env = gym.make("CartPole-v1")
-    env = gym.make('LunarLander-v2')
+    env = gym.make("CartPole-v1")
 
     obs_dim = env.observation_space.shape[0]
     nacts = env.action_space.n
 
     net = Agent(obs_dim, hidden_shape, nacts)
-    #net = mlp(sizes=[obs_dim]+hidden_shape+[nacts])
     from torch.distributions.categorical import Categorical
     def get_policy(obs) -> Categorical:
         logits = net(obs)
