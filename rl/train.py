@@ -8,19 +8,15 @@ import matplotlib.pyplot as plt
 
 
 
-class Agent(nn.Module):
-    def __init__(self, obs_dim, inner,act_dim):
-        super().__init__()
-        net = nn.Sequential(
-            nn.Linear(obs_dim,inner),
-            nn.Tanh(),
-            nn.Linear(inner, inner),
-            nn.Tanh(),
-            nn.Linear(inner, act_dim)
-        )
-
-    def forward(self,x):
-        return self.net(x)
+def Agent(obs_dim, inner, act_dim):
+    net = nn.Sequential(
+        nn.Linear(obs_dim,inner),
+        nn.Tanh(),
+        nn.Linear(inner, inner),
+        nn.Tanh(),
+        nn.Linear(inner, act_dim)
+    )
+    return net
     
 def mlp(sizes, activation=nn.Tanh, output_activation=nn.Identity):
     # Build a feedforward neural network.
@@ -30,15 +26,15 @@ def mlp(sizes, activation=nn.Tanh, output_activation=nn.Identity):
         layers += [nn.Linear(sizes[j], sizes[j+1]), act()]
     return nn.Sequential(*layers)
     
-def train(render=False, hidden_shape = [32], lr=1e-2, epochs=64, bs=5000):
-    env = gym.make("CartPole-v1")
-    #env = gym.make('LunarLander-v2', render_mode="rgb_array")
+def train(render=False, hidden_shape = 32, lr=1e-2, epochs=64, bs=5000):
+    #env = gym.make("CartPole-v1")
+    env = gym.make('LunarLander-v2')
 
     obs_dim = env.observation_space.shape[0]
     nacts = env.action_space.n
 
-    # DO NET HERE
-    net = mlp(sizes=[obs_dim]+hidden_shape+[nacts])
+    net = Agent(obs_dim, hidden_shape, nacts)
+    #net = mlp(sizes=[obs_dim]+hidden_shape+[nacts])
     from torch.distributions.categorical import Categorical
     def get_policy(obs) -> Categorical:
         logits = net(obs)
@@ -78,7 +74,7 @@ def train(render=False, hidden_shape = [32], lr=1e-2, epochs=64, bs=5000):
             BA.append(act)
             R.append(rew)
             
-            if done:
+            if done or len(BO) > bs:
                 ep_ret, ep_len = sum(R), len(R)
                 BR.append(ep_ret)
                 BL.append(ep_len)
