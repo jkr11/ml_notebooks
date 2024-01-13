@@ -4,6 +4,7 @@ from gym.spaces import Discrete, Box
 import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 
@@ -29,15 +30,9 @@ def mlp(sizes, activation=nn.Tanh, output_activation=nn.Identity):
         layers += [nn.Linear(sizes[j], sizes[j+1]), act()]
     return nn.Sequential(*layers)
     
-def train(render=False, hidden_shape = [32], lr=1e-2, epochs=50, bs=5000):
-    env = gym.make("CartPole-v1",render_mode = "rgb_array")
+def train(render=False, hidden_shape = [32], lr=1e-2, epochs=64, bs=5000):
+    env = gym.make("CartPole-v1")
     #env = gym.make('LunarLander-v2', render_mode="rgb_array")
-
-
-    assert isinstance(env.observation_space, Box), \
-        "This example only works for envs with continuous state spaces."
-    assert isinstance(env.action_space, Discrete), \
-        "This example only works for envs with discrete action spaces." 
 
     obs_dim = env.observation_space.shape[0]
     nacts = env.action_space.n
@@ -64,6 +59,7 @@ def train(render=False, hidden_shape = [32], lr=1e-2, epochs=50, bs=5000):
         BW = []
         BR = []
         BL = []
+        
 
         obs, _ = env.reset() 
         done = False
@@ -81,7 +77,7 @@ def train(render=False, hidden_shape = [32], lr=1e-2, epochs=50, bs=5000):
 
             BA.append(act)
             R.append(rew)
-
+            
             if done:
                 ep_ret, ep_len = sum(R), len(R)
                 BR.append(ep_ret)
@@ -93,6 +89,7 @@ def train(render=False, hidden_shape = [32], lr=1e-2, epochs=50, bs=5000):
                 ddone = True
                 if len(BO) > bs:
                     break
+        
 
         opt.zero_grad()
         
@@ -101,9 +98,15 @@ def train(render=False, hidden_shape = [32], lr=1e-2, epochs=50, bs=5000):
         opt.step()
         return bloss, BR, BL
     
+    BBR = []
+
     for i in range(epochs):
         bl, BR, BL = train_one()
+        BBR.extend(BR)
+        plt.plot(BBR)
+        plt.pause(0.05)
         
+        #plt.show()
         print('epoch: %3d \t loss: %.3f \t return: %.3f \t ep_len: %.3f'%
                 (i, bl, np.mean(BR), np.mean(BL)))
         
