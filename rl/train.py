@@ -5,92 +5,76 @@ from torch.optim import Adam
 import numpy as np
 import matplotlib.pyplot as plt
 
-def Agent(obs_dim, inner, act_dim):
-    return nn.Sequential(
+class Agent(nn.Module):
+    def __init__(self, obs_dim, inner, act_dim):
+        self.actor = nn.Sequential(
         nn.Linear(obs_dim,inner),
         nn.Tanh(),
         nn.Linear(inner, inner),
-        nn.Tanh(),
-        nn.Linear(inner, act_dim)
-    )
+        nn.LogSoftmax(-1)
+        )
+        self.critic = nn.Sequential(
+            nn.Linear(obs_dim,inner),
+            nn.ReLU()
+            nn.Linear(inner, 1),
+        )
 
-def train(render=False, hidden_shape = 32, lr=1e-2, epochs=64, bs=5000):
+    def forward(self, x):
+        return self.act(x), self.critic(x) # log prob + obs
+    
+    
+def eval(model, env):
+    (obs, _), done, ddone = env.reset(), False, False
+    rr = 0.
+    while not done and not ddone:
+        act = model(torch.Tensor(obs))[0].argmax().item()
+        obs, rew, done, ddone, _ = env.step(act)
+        rr += float(rew)
+    return rr
+
+
+
+if __name__ == "__main__":
+    render=False
+    hidden_shape = 32
+    lr=1e-2
+    epochs=64
+    bs=5000
+    REPLAY_BUFFER_SIZE = 2000
+
     env = gym.make("CartPole-v1")
 
-    obs_dim = env.observation_space.shape[0]
-    nacts = env.action_space.n
+    net = Agent(env.observation_space.shape[0], hidden_shape, env.action_space.n)
 
-    net = Agent(obs_dim, hidden_shape, nacts)
-    from torch.distributions.categorical import Categorical
-    def get_policy(obs) -> Categorical:
-        logits = net(obs)
-        return Categorical(logits=logits)
-    
-    def get_action(obs):
-        return get_policy(obs).sample().item()
-    
-    def loss(obs, act, weights):
-        logp = get_policy(obs).log_prob(act)
-        return -(logp * weights).mean()
-    
     opt = Adam(net.parameters(), lr = lr)
 
-    def train_one():
-        BO = []
-        BA = []
-        BW = []
-        BR = []
-        BL = []
-        
+    def train_step():
+        pass
 
-        obs, _ = env.reset() 
-        done = False
-        R = []
-        ddone = False
-        
-        while True:
-
-            if not ddone:
-                env.render()
-            BO.append(obs)
-
-            act = get_action(torch.as_tensor(np.array(obs), dtype=torch.float32))
-            obs, rew, done, _, _ = env.step(act)
-
-            BA.append(act)
-            R.append(rew)
-            
-            if done or len(BO) > bs:
-                ep_ret, ep_len = sum(R), len(R)
-                BR.append(ep_ret)
-                BL.append(ep_len)
-
-                BW += [ep_ret] * ep_len
-
-                (obs, _), done, R = env.reset(), False, []
-                ddone = True
-                if len(BO) > bs:
-                    break
-        
-
-        opt.zero_grad()
-        
-        bloss = loss(obs=torch.as_tensor(BO, dtype=torch.float32), act=torch.as_tensor(BA,dtype=torch.float32), weights=torch.as_tensor(BW,dtype=torch.float32))
-        bloss.backward()
-        opt.step()
-        return bloss, BR, BL
+    def get_action(obs):
+        with torch.no_grad:
+            ret = torch.exp(net(obs)[0])
+            ret = torch.multinomial(ret)
+        return ret
     
-    BBR = []
+    SB, AB, RB = [], [], []
+    from tqdm import trange
+    for ep in (t:=trange(epochs)):
+        obs = env.reset()[0]
+        rr, done, ddone = [], False, False
+        while not done and not ddone:
+            act = get_action(torch.Tensor(obs)).item()
+            SB.append(np.copy(obs))
+            AB.append(act)
 
-    for i in range(epochs):
-        bl, BR, BL = train_one()
-        BBR.extend(BR)
-        plt.plot(BBR)
-        plt.pause(0.05)
+            obs, rew, done, ddone, _ = env.step(act)
+            rr.append(float(rew))
+        RB += [np.sum(rr[i:]) for i in range(len(rr))] # Rev cumsum also np.cumsum(r[::-1])[::-1]
+
+        SB, AB, RB = SB[-REPLAY_BUFFER_SIZE:], AB[-REPLAY_BUFFER_SIZE:], RB[-REPLAY_BUFFER_SIZE:]
+        S, A, R = torch.Tensor(SB), torch.Tensor(AB), torch.Tensor(RB)
+
+        for i in bs:
+            
+
         
-        #plt.show()
-        print('epoch: %3d \t loss: %.3f \t return: %.3f \t ep_len: %.3f'%
-                (i, bl, np.mean(BR), np.mean(BL)))
-        
-if __name__ == "__main__":
-    train(render=True,lr=1e-2)
